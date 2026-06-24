@@ -1,0 +1,623 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  OWNER
+  MODERATOR
+  STAFF
+  USER
+}
+
+enum UserStatus {
+  ACTIVE
+  BLOCKED
+  PENDING
+}
+
+enum ChannelType {
+  CITY
+  THEME
+}
+
+enum ModerationMode {
+  AUTO
+  HYBRID
+  MANUAL
+}
+
+enum SourceType {
+  WEBSITE
+  RSS
+  TELEGRAM
+  OFFICIAL
+  MEDIA
+  MANUAL
+}
+
+enum TrustLevel {
+  A
+  B
+  C
+}
+
+enum ContentType {
+  NEWS
+  ALERT
+  AD
+  SPONSORED
+  JOB
+  EVENT
+}
+
+enum FactCheckStatus {
+  PENDING
+  PASSED
+  MANUAL_REVIEW
+  REJECTED
+}
+
+enum ContentStatus {
+  DRAFT
+  QUEUED
+  MANUAL_REVIEW
+  APPROVED
+  REJECTED
+  PUBLISHED
+  BLOCKED
+}
+
+enum ModerationAction {
+  ALLOW
+  DELETE
+  WARN
+  MUTE
+  BAN
+  MANUAL_REVIEW
+}
+
+enum EventType {
+  DELETE
+  WARN
+  MUTE
+  BAN
+  UNBAN
+  APPROVE
+  REJECT
+}
+
+enum AppealStatus {
+  NEW
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  CLOSED
+}
+
+enum AdOrderStatus {
+  DRAFT
+  PENDING_REVIEW
+  WAITING_PAYMENT
+  PAID
+  REJECTED
+  PUBLISHED
+  CLOSED
+  WAITING_PAYMENT_MANUAL
+}
+
+enum JobStatus {
+  NEW
+  REVIEW
+  APPROVED
+  REJECTED
+  HIRED
+}
+
+enum ThreadStatus {
+  OPEN
+  PENDING
+  CLOSED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  CANCELED
+  FAILED
+}
+
+enum AdComplianceStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  MANUAL_REVIEW
+}
+
+enum Scope {
+  GLOBAL
+  CHANNEL
+  BOT
+}
+
+model User {
+  id              Int       @id @default(autoincrement())
+  telegramUserId  BigInt    @unique @map("telegram_user_id")
+  username        String?
+  firstName       String?   @map("first_name")
+  lastName        String?   @map("last_name")
+  photoUrl        String?   @map("photo_url")
+  phoneNumber     String?   @map("phone_number")
+  email           String?
+  role            UserRole  @default(USER)
+  status          UserStatus @default(ACTIVE)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  sessions        Session[]
+  contentItems    ContentItem[] @relation("CreatedByUser")
+  contentReviews  ContentReview[]
+  moderationEvents ModerationEvent[] @relation("ActorUser")
+  appeals         Appeal[]    @relation("Reviewer")
+  jobApplications JobApplication[] @relation("Reviewer")
+  supportThreads  SupportThread[] @relation("AssignedUser")
+  auditLogs       AuditLog[]
+
+  @@map("users")
+}
+
+model Session {
+  id                String   @id @default(uuid())
+  userId            Int      @map("user_id")
+  provider          String   @default("TELEGRAM_OIDC")
+  accessTokenHash   String?  @map("access_token_hash")
+  refreshTokenHash  String?  @map("refresh_token_hash")
+  expiresAt         DateTime @map("expires_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  user              User     @relation(fields: [userId], references: [id])
+
+  @@map("sessions")
+}
+
+model Channel {
+  id               Int            @id @default(autoincrement())
+  title            String
+  handle           String         @unique
+  type             ChannelType
+  city             String?
+  description      String?
+  logoUrl          String?        @map("logo_url")
+  watermarkUrl     String?        @map("watermark_url")
+  signatureText    String         @default("СВОЙ") @map("signature_text")
+  moderationMode   ModerationMode @default(HYBRID) @map("moderation_mode")
+  isActive         Boolean        @default(true) @map("is_active")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  chats            ChannelChat[]
+  sources          Source[]
+  sourceGroups     SourceGroup[]
+  contentItems     ContentItem[]
+  moderationRules  ModerationRule[]
+  moderationEvents ModerationEvent[]
+  userWarnings     UserWarning[]
+  appeals          Appeal[]
+  botLinks         BotChannelLink[]
+
+  @@map("channels")
+}
+
+model ChannelChat {
+  id               Int      @id @default(autoincrement())
+  channelId        Int      @map("channel_id")
+  chatType         String   @map("chat_type")
+  telegramChatId   BigInt   @unique @map("telegram_chat_id")
+  title            String?
+  username         String?
+
+  channel          Channel  @relation(fields: [channelId], references: [id])
+  moderationEvents ModerationEvent[]
+
+  @@map("channel_chats")
+}
+
+model Bot {
+  id              Int      @id @default(autoincrement())
+  name            String
+  username        String   @unique
+  telegramBotId   BigInt   @unique @map("telegram_bot_id")
+  tokenRef        String   @map("token_ref")
+  isMaster        Boolean  @default(false) @map("is_master")
+  webhookPath     String   @unique @map("webhook_path")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  channelLinks    BotChannelLink[]
+
+  @@map("bots")
+}
+
+model BotChannelLink {
+  botId     Int
+  channelId Int
+
+  bot       Bot     @relation(fields: [botId], references: [id])
+  channel   Channel @relation(fields: [channelId], references: [id])
+
+  @@id([botId, channelId])
+  @@map("bot_channel_links")
+}
+
+model SourceGroup {
+  id        Int      @id @default(autoincrement())
+  channelId Int      @map("channel_id")
+  title     String
+  city      String?
+
+  channel   Channel  @relation(fields: [channelId], references: [id])
+  sources   Source[]
+
+  @@map("source_groups")
+}
+
+model Source {
+  id             Int          @id @default(autoincrement())
+  sourceGroupId  Int?         @map("source_group_id")
+  channelId      Int          @map("channel_id")
+  title          String
+  type           SourceType
+  url            String?
+  telegramChatId BigInt?      @map("telegram_chat_id")
+  rssUrl         String?      @map("rss_url")
+  trustLevel     TrustLevel   @default(B) @map("trust_level")
+  mode           ModerationMode @default(AUTO)
+  whitelist      String?
+  blacklist      String?
+  isActive       Boolean      @default(true) @map("is_active")
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  sourceGroup    SourceGroup? @relation(fields: [sourceGroupId], references: [id])
+  channel        Channel      @relation(fields: [channelId], references: [id])
+  contentItems   ContentItem[]
+  fetchLogs      SourceFetchLog[]
+
+  @@map("sources")
+}
+
+model SourceFetchLog {
+  id        Int      @id @default(autoincrement())
+  sourceId  Int      @map("source_id")
+  status    String
+  fetchedAt DateTime @default(now()) @map("fetched_at")
+  details   Json?    @db.JsonB
+
+  source    Source   @relation(fields: [sourceId], references: [id])
+
+  @@map("source_fetch_logs")
+}
+
+model ContentItem {
+  id                  Int              @id @default(autoincrement())
+  channelId           Int              @map("channel_id")
+  sourceId            Int?             @map("source_id")
+  type                ContentType
+  city                String?
+  sourceTitle         String?          @map("source_title")
+  sourceUrl           String?          @map("source_url")
+  rawTitle            String?          @map("raw_title")
+  rawText             String?          @db.Text @map("raw_text")
+  rewrittenTitle      String?          @map("rewritten_title")
+  rewrittenText       String?          @db.Text @map("rewritten_text")
+  finalText           String?          @db.Text @map("final_text")
+  signatureText       String?          @map("signature_text")
+  duplicateHash       String?          @unique @map("duplicate_hash") @db.VarChar(64)
+  riskScore           Int              @default(0) @map("risk_score")
+  factCheckStatus     FactCheckStatus  @default(PENDING) @map("fact_check_status")
+  status              ContentStatus    @default(DRAFT)
+  scheduledAt         DateTime?        @map("scheduled_at")
+  publishedAt         DateTime?        @map("published_at")
+  telegramMessageId   BigInt?          @map("telegram_message_id")
+  createdByUserId     Int?             @map("created_by_user_id")
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+
+  channel             Channel          @relation(fields: [channelId], references: [id])
+  source              Source?          @relation(fields: [sourceId], references: [id])
+  createdByUser       User?            @relation("CreatedByUser", fields: [createdByUserId], references: [id])
+  media               ContentMedia[]
+  reviews             ContentReview[]
+
+  @@index([status, channelId])
+  @@map("content_items")
+}
+
+model ContentMedia {
+  id              Int      @id @default(autoincrement())
+  contentItemId   Int      @map("content_item_id")
+  originalUrl     String?  @map("original_url")
+  storageKey      String   @map("storage_key")
+  mimeType        String?  @map("mime_type")
+  width           Int?
+  height          Int?
+  watermarkApplied Boolean @default(false) @map("watermark_applied")
+
+  contentItem     ContentItem @relation(fields: [contentItemId], references: [id])
+
+  @@map("content_media")
+}
+
+model ContentReview {
+  id            Int      @id @default(autoincrement())
+  contentItemId Int      @map("content_item_id")
+  reviewerUserId Int     @map("reviewer_user_id")
+  decision      String
+  reason        String?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  contentItem   ContentItem @relation(fields: [contentItemId], references: [id])
+  reviewer      User        @relation(fields: [reviewerUserId], references: [id])
+
+  @@map("content_reviews")
+}
+
+model ModerationRule {
+  id                    Int      @id @default(autoincrement())
+  channelId             Int?     @map("channel_id")
+  scope                 Scope    @default(GLOBAL)
+  category              String
+  pattern               String
+  action                ModerationAction
+  thresholdCount        Int?     @map("threshold_count")
+  thresholdWindowSeconds Int?    @map("threshold_window_seconds")
+  isActive              Boolean  @default(true) @map("is_active")
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  channel               Channel? @relation(fields: [channelId], references: [id])
+
+  @@map("moderation_rules")
+}
+
+model ModerationEvent {
+  id                    Int        @id @default(autoincrement())
+  channelId             Int        @map("channel_id")
+  chatId                Int?       @map("chat_id")
+  telegramMessageId     BigInt?    @map("telegram_message_id")
+  targetTelegramUserId  BigInt     @map("target_telegram_user_id")
+  actorType             String     @map("actor_type")
+  actorUserId           Int?       @map("actor_user_id")
+  eventType             EventType  @map("event_type")
+  reason                String?
+  metadata              Json?      @db.JsonB
+  expiresAt             DateTime?  @map("expires_at")
+  createdAt             DateTime   @default(now()) @map("created_at")
+
+  channel               Channel    @relation(fields: [channelId], references: [id])
+  chat                  ChannelChat? @relation(fields: [chatId], references: [id])
+  actorUser             User?      @relation("ActorUser", fields: [actorUserId], references: [id])
+
+  @@index([targetTelegramUserId, channelId])
+  @@map("moderation_events")
+}
+
+model UserWarning {
+  id                Int      @id @default(autoincrement())
+  channelId         Int      @map("channel_id")
+  telegramUserId    BigInt   @map("telegram_user_id")
+  count             Int      @default(1)
+  lastReason        String?  @map("last_reason")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  channel           Channel  @relation(fields: [channelId], references: [id])
+
+  @@unique([channelId, telegramUserId])
+  @@map("user_warnings")
+}
+
+model Appeal {
+  id                  Int           @id @default(autoincrement())
+  telegramUserId      BigInt        @map("telegram_user_id")
+  userId              Int?          @map("user_id")
+  moderationEventId   Int?          @map("moderation_event_id")
+  channelId           Int?          @map("channel_id")
+  text                String        @db.Text
+  status              AppealStatus  @default(NEW)
+  reviewerUserId      Int?          @map("reviewer_user_id")
+  resolutionText      String?       @map("resolution_text")
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+
+  user                User?         @relation("Reviewer", fields: [reviewerUserId], references: [id])
+  channel             Channel?      @relation(fields: [channelId], references: [id])
+
+  @@map("appeals")
+}
+
+model Advertiser {
+  id              Int      @id @default(autoincrement())
+  telegramUserId  BigInt?  @unique @map("telegram_user_id")
+  companyName     String?  @map("company_name")
+  contactName     String?  @map("contact_name")
+  telegramUsername String? @map("telegram_username")
+  phone           String?
+  email           String?
+  requisites      String?  @db.Text
+  notes           String?  @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  adOrders        AdOrder[]
+
+  @@map("advertisers")
+}
+
+model AdOrder {
+  id            Int            @id @default(autoincrement())
+  advertiserId  Int            @map("advertiser_id")
+  packageType   String         @map("package_type")
+  status        AdOrderStatus  @default(DRAFT)
+  amount        Decimal        @db.Decimal(12, 2)
+  currency      String         @default("RUB")
+  cityScope     Json?          @db.JsonB @map("city_scope")
+  startAt       DateTime?      @map("start_at")
+  endAt         DateTime?      @map("end_at")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  advertiser    Advertiser     @relation(fields: [advertiserId], references: [id])
+  materials     AdMaterial[]
+  media         AdMedia[]
+  payments      Payment[]
+
+  @@map("ad_orders")
+}
+
+model AdMaterial {
+  id               Int                 @id @default(autoincrement())
+  adOrderId        Int                 @map("ad_order_id")
+  rawText          String?             @db.Text @map("raw_text")
+  rewrittenText    String?             @db.Text @map("rewritten_text")
+  finalText        String?             @db.Text @map("final_text")
+  sourceLinks      Json?               @db.JsonB @map("source_links")
+  complianceStatus AdComplianceStatus  @default(PENDING) @map("compliance_status")
+  rejectionReason  String?             @map("rejection_reason")
+  createdAt        DateTime            @default(now()) @map("created_at")
+
+  adOrder          AdOrder             @relation(fields: [adOrderId], references: [id])
+
+  @@map("ad_materials")
+}
+
+model AdMedia {
+  id              Int      @id @default(autoincrement())
+  adOrderId       Int      @map("ad_order_id")
+  storageKey      String   @map("storage_key")
+  watermarkApplied Boolean @default(false) @map("watermark_applied")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  adOrder         AdOrder  @relation(fields: [adOrderId], references: [id])
+
+  @@map("ad_media")
+}
+
+model Payment {
+  id                Int           @id @default(autoincrement())
+  adOrderId         Int?          @map("ad_order_id")
+  provider          String        @default("YOOKASSA")
+  externalPaymentId String?       @unique @map("external_payment_id")
+  status            PaymentStatus @default(PENDING)
+  amount            Decimal       @db.Decimal(12, 2)
+  currency          String        @default("RUB")
+  payload           Json?         @db.JsonB
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  adOrder           AdOrder?      @relation(fields: [adOrderId], references: [id])
+
+  @@map("payments")
+}
+
+model SupportThread {
+  id            Int           @id @default(autoincrement())
+  telegramUserId BigInt       @map("telegram_user_id")
+  userId        Int?          @map("user_id")
+  threadType    String        @map("thread_type")
+  status        ThreadStatus  @default(OPEN)
+  assignedUserId Int?         @map("assigned_user_id")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  assignedUser  User?         @relation("AssignedUser", fields: [assignedUserId], references: [id])
+  messages      SupportMessage[]
+
+  @@map("support_threads")
+}
+
+model SupportMessage {
+  id                Int      @id @default(autoincrement())
+  threadId          Int      @map("thread_id")
+  senderType        String   @map("sender_type")
+  senderUserId      Int?     @map("sender_user_id")
+  telegramMessageId BigInt?  @map("telegram_message_id")
+  text              String?  @db.Text
+  media             Json?    @db.JsonB
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  thread            SupportThread @relation(fields: [threadId], references: [id])
+
+  @@map("support_messages")
+}
+
+model JobApplication {
+  id              Int      @id @default(autoincrement())
+  telegramUserId  BigInt   @map("telegram_user_id")
+  desiredRole     String   @map("desired_role")
+  answers         Json?    @db.JsonB
+  portfolioLinks  Json?    @db.JsonB @map("portfolio_links")
+  status          JobStatus @default(NEW)
+  reviewerUserId  Int?     @map("reviewer_user_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  reviewer        User?    @relation("Reviewer", fields: [reviewerUserId], references: [id])
+
+  @@map("job_applications")
+}
+
+model Notification {
+  id            Int      @id @default(autoincrement())
+  type          String
+  targetChatId  BigInt?  @map("target_chat_id")
+  targetUserId  BigInt?  @map("target_user_id")
+  payload       Json?    @db.JsonB
+  status        String   @default("PENDING")
+  sentAt        DateTime? @map("sent_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("notifications")
+}
+
+model Setting {
+  id        Int      @id @default(autoincrement())
+  scope     Scope
+  scopeId   Int?     @map("scope_id")
+  key       String
+  value     Json     @db.JsonB
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([scope, scopeId, key])
+  @@map("settings")
+}
+
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  actorUserId Int?     @map("actor_user_id")
+  actorType   String   @map("actor_type")
+  action      String
+  entityType  String   @map("entity_type")
+  entityId    String   @map("entity_id")
+  before      Json?    @db.JsonB
+  after       Json?    @db.JsonB
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  actorUser   User?    @relation(fields: [actorUserId], references: [id])
+
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
+
+model OidcState {
+  state          String   @id @unique
+  nonce          String
+  codeVerifier   String   @map("code_verifier")
+  redirectUri    String   @map("redirect_uri")
+  expiresAt      DateTime @map("expires_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@map("oidc_states")
+}

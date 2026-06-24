@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: svoy
+      POSTGRES_USER: svoy
+      POSTGRES_PASSWORD: svoypass
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+
+  minio:
+    image: minio/minio
+    restart: always
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - miniodata:/data
+
+  api:
+    build: .
+    restart: always
+    depends_on:
+      - postgres
+      - redis
+      - minio
+    environment:
+      - DATABASE_URL=postgresql://svoy:svoypass@postgres:5432/svoy?schema=public
+      - REDIS_URL=redis://redis:6379
+      - NODE_ENV=production
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./assets:/app/assets
+    command: sh -c "npx prisma migrate deploy && node dist/main"
+
+  worker:
+    build: .
+    restart: always
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - DATABASE_URL=postgresql://svoy:svoypass@postgres:5432/svoy?schema=public
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - ./assets:/app/assets
+    command: node dist/worker
+
+volumes:
+  pgdata:
+  miniodata:
