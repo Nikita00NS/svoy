@@ -1,18 +1,19 @@
 import { Module, forwardRef } from '@nestjs/common';
-import { ContentController } from './content.controller';
-import { ContentService } from './content.service';
-import { AiModule } from '../ai/ai.module';
-import { StorageModule } from '../storage/storage.module';
-import { WatermarkService } from './watermark.service';
-import { MediaService } from './media.service';
-import { TelegramModule } from '../telegram/telegram.module';
-import { AuditModule } from '../audit/audit.module';
-import { QueuesModule } from '../queues/queues.module';
+import { TelegramController } from './telegram.controller';
+import { TelegramService } from './telegram.service';
+import { TelegramApiService } from './telegram-api.service';
+import { IntakesModule } from '../intakes/intakes.module';
+import { ModerationModule } from '../moderation/moderation.module';
+import { ContentModule } from '../content/content.module';
 
 @Module({
-  imports: [AiModule, StorageModule, forwardRef(() => TelegramModule), AuditModule, QueuesModule],
-  controllers: [ContentController],
-  providers: [ContentService, WatermarkService, MediaService],
-  exports: [ContentService, MediaService],
+  imports: [
+    IntakesModule,
+    forwardRef(() => ModerationModule),
+    forwardRef(() => ContentModule),
+  ],
+  controllers: [TelegramController],
+  providers: [TelegramService, TelegramApiService],
+  exports: [TelegramApiService],
 })
-export class ContentModule {}
+export class TelegramModule {}
