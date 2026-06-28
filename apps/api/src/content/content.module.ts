@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ContentController } from './content.controller';
 import { ContentService } from './content.service';
 import { AiModule } from '../ai/ai.module';
@@ -9,5 +9,16 @@ import { TelegramModule } from '../telegram/telegram.module';
 import { AuditModule } from '../audit/audit.module';
 import { QueuesModule } from '../queues/queues.module';
 
-@Module({ imports: [AiModule, StorageModule, TelegramModule, AuditModule, QueuesModule], controllers: [ContentController], providers: [ContentService, WatermarkService, MediaService], exports: [ContentService, MediaService] })
+@Module({
+  imports: [
+    AiModule,
+    StorageModule,
+    forwardRef(() => TelegramModule),
+    AuditModule,
+    QueuesModule,
+  ],
+  controllers: [ContentController],
+  providers: [ContentService, WatermarkService, MediaService],
+  exports: [ContentService, MediaService],
+})
 export class ContentModule {}
