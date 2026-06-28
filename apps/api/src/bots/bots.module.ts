@@ -3,5 +3,10 @@ import { BotsController } from './bots.controller';
 import { BotsService } from './bots.service';
 import { TelegramModule } from '../telegram/telegram.module';
 
-@Module({ imports: [TelegramModule], controllers: [BotsController], providers: [BotsService] })
+@Module({
+  imports: [TelegramModule],
+  controllers: [BotsController],
+  providers: [BotsService],
+  exports: [BotsService],
+})
 export class BotsModule {}
