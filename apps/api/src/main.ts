@@ -1,30 +1,38 @@
-import cookieParser from 'cookie-parser';
-import { ValidationPipe } from '@nestjs/common';
-import { NestFactory } from '@nestjs/core';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { existsSync, mkdirSync } from 'fs';
-import { AppModule } from './app.module';
-import { AppLogger } from './common/logger/app.logger';
-import { AllExceptionsFilter } from './common/filters/http-exception.filter';
-import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+\import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { UserRole } from '@prisma/client';
+import { OwnerGuard } from '../common/guards/owner.guard';
+import { PaginationDto } from '../common/dto/pagination.dto';
+import { UsersService } from './users.service';
 
-async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { logger: new AppLogger() });
-  app.enableCors({ origin: [process.env.ADMIN_URL || 'http://localhost:3000'], credentials: true });
-  app.use(cookieParser());
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
-  app.useGlobalFilters(new AllExceptionsFilter());
-  app.useGlobalInterceptors(new ResponseInterceptor());
+@Controller('users')
+@UseGuards(OwnerGuard)
+export class UsersController {
+  constructor(private readonly usersService: UsersService) {}
 
-  const storageDir = process.env.STORAGE_DIR || '/tmp/svoy_storage';
-  if (!existsSync(storageDir)) mkdirSync(storageDir, { recursive: true });
-  app.useStaticAssets(storageDir, { prefix: '/storage/' });
+  @Get()
+  list(@Query() query: PaginationDto) {
+    return this.usersService.list(query.page, query.limit, query.q);
+  }
 
-  const swaggerConfig = new DocumentBuilder().setTitle('СВОЙ API').setDescription('API документация проекта СВОЙ').setVersion('1.0.0-rc.1').build();
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('docs', app, document);
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @Body() body: { role?: UserRole; isActive?: boolean },
+  ) {
+    return this.usersService.update(id, body);
+  }
 
-  await app.listen(Number(process.env.PORT || 3001));
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.usersService.softDelete(id);
+  }
 }
-
-bootstrap();
