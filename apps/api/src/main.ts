@@ -1,38 +1,57 @@
-\import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
-import { UserRole } from '@prisma/client';
-import { OwnerGuard } from '../common/guards/owner.guard';
-import { PaginationDto } from '../common/dto/pagination.dto';
-import { UsersService } from './users.service';
+import cookieParser from 'cookie-parser';
+import { ValidationPipe } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { ExpressAdapter } from '@nestjs/platform-express';
+import express from 'express';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { existsSync, mkdirSync } from 'fs';
+import { AppModule } from './app.module';
+import { AppLogger } from './common/logger/app.logger';
+import { AllExceptionsFilter } from './common/filters/http-exception.filter';
+import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 
-@Controller('users')
-@UseGuards(OwnerGuard)
-export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+async function bootstrap() {
+  const server = express();
 
-  @Get()
-  list(@Query() query: PaginationDto) {
-    return this.usersService.list(query.page, query.limit, query.q);
+  const app = await NestFactory.create<NestExpressApplication>(
+    AppModule,
+    new ExpressAdapter(server),
+    { logger: new AppLogger() },
+  );
+
+  app.enableCors({
+    origin: [process.env.ADMIN_URL || 'http://localhost:3000'],
+    credentials: true,
+  });
+
+  app.use(cookieParser());
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+    }),
+  );
+  app.useGlobalFilters(new AllExceptionsFilter());
+  app.useGlobalInterceptors(new ResponseInterceptor());
+
+  const storageDir = process.env.STORAGE_DIR || '/tmp/svoy_storage';
+  if (!existsSync(storageDir)) {
+    mkdirSync(storageDir, { recursive: true });
   }
 
-  @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() body: { role?: UserRole; isActive?: boolean },
-  ) {
-    return this.usersService.update(id, body);
-  }
+  server.use('/storage', express.static(storageDir));
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.usersService.softDelete(id);
-  }
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('СВОЙ API')
+    .setDescription('API документация проекта СВОЙ')
+    .setVersion('1.0.0-rc.1')
+    .build();
+
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('docs', app, document);
+
+  await app.listen(Number(process.env.PORT || 3001));
 }
+
+bootstrap();
