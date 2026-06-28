@@ -10,7 +10,13 @@ import { AuditModule } from '../audit/audit.module';
 import { QueuesModule } from '../queues/queues.module';
 
 @Module({
-  imports: [AiModule, StorageModule, forwardRef(() => TelegramModule), AuditModule, QueuesModule],
+  imports: [
+    AiModule,
+    StorageModule,
+    forwardRef(() => TelegramModule),
+    AuditModule,
+    QueuesModule,
+  ],
   controllers: [ContentController],
   providers: [ContentService, WatermarkService, MediaService],
   exports: [ContentService, MediaService],
