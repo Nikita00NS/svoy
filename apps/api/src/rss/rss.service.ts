@@ -1,25 +1,41 @@
 import { Injectable } from '@nestjs/common';
-import Parser from 'rss-parser';
+import Parser = require('rss-parser');
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class RssService {
-  private parser = new Parser();
-  constructor(private readonly prisma: PrismaService) {}
+  private parser: Parser;
+  constructor(private readonly prisma: PrismaService) {
+    this.parser = new Parser();
+  }
 
   list() {
-    return this.prisma.rssSource.findMany({ orderBy: { createdAt: 'desc' } });
+    return this.prisma.rssSource.findMany({
+      where: { deletedAt: null },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   create(data: { title: string; url: string; isActive?: boolean }) {
-    return this.prisma.rssSource.create({ data: { title: data.title, url: data.url, isActive: data.isActive ?? true } });
+    return this.prisma.rssSource.create({
+      data: {
+        title: data.title,
+        url: data.url,
+        isActive: data.isActive ?? true,
+      },
+    });
   }
 
   async fetchNow(id: string) {
-    const source = await this.prisma.rssSource.findUnique({ where: { id } });
+    const source = await this.prisma.rssSource.findUnique({
+      where: { id },
+    });
+
     if (!source) return null;
+
     const feed = await this.parser.parseURL(source.url);
     const created: string[] = [];
+
     for (const item of feed.items.slice(0, 10)) {
       const row = await this.prisma.contentItem.create({
         data: {
@@ -31,6 +47,10 @@ export class RssService {
       });
       created.push(row.id);
     }
-    return { feedTitle: feed.title, createdIds: created };
+
+    return {
+      feedTitle: feed.title,
+      createdIds: created,
+    };
   }
 }
