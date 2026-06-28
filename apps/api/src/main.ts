@@ -1,24 +1,18 @@
 import cookieParser from 'cookie-parser';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { NestExpressApplication } from '@nestjs/platform-express';
-import { ExpressAdapter } from '@nestjs/platform-express';
-import express from 'express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { existsSync, mkdirSync } from 'fs';
+import { join } from 'path';
 import { AppModule } from './app.module';
 import { AppLogger } from './common/logger/app.logger';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 
 async function bootstrap() {
-  const server = express();
-
-  const app = await NestFactory.create<NestExpressApplication>(
-    AppModule,
-    new ExpressAdapter(server),
-    { logger: new AppLogger() },
-  );
+  const app = await NestFactory.create(AppModule, {
+    logger: new AppLogger(),
+  });
 
   app.enableCors({
     origin: [process.env.ADMIN_URL || 'http://localhost:3000'],
@@ -40,7 +34,8 @@ async function bootstrap() {
     mkdirSync(storageDir, { recursive: true });
   }
 
-  server.use('/storage', express.static(storageDir));
+  const expressApp = app.getHttpAdapter().getInstance();
+  expressApp.use('/storage', require('express').static(storageDir));
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('СВОЙ API')
