@@ -63,11 +63,11 @@ model User {
   deletedAt        DateTime?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
-
   intakeRequests   IntakeRequest[]
   moderationEvents ModerationEvent[] @relation("ActorModerationEvents")
   supportThreads   SupportThread[]
   auditLogs        AuditLog[]
+  sessions         Session[]
 }
 
 model Channel {
