@@ -1,6 +1,12 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ModerationController } from './moderation.controller';
 import { ModerationService } from './moderation.service';
+import { TelegramModule } from '../telegram/telegram.module';
 
-@Module({ controllers: [ModerationController], providers: [ModerationService], exports: [ModerationService] })
+@Module({
+  imports: [forwardRef(() => TelegramModule)],
+  controllers: [ModerationController],
+  providers: [ModerationService],
+  exports: [ModerationService],
+})
 export class ModerationModule {}
