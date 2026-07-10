@@ -1,0 +1,66 @@
+version: '3.9'
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: svoy
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+
+  api:
+    build: ./apps/api
+    restart: unless-stopped
+    env_file:
+      - ./apps/api/.env
+    volumes:
+      - svoy_storage:/home/user/svoy_storage
+    depends_on:
+      - postgres
+      - redis
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  worker:
+    build: ./apps/api
+    restart: unless-stopped
+    command: ["node", "dist/workers/worker-main.js"]
+    env_file:
+      - ./apps/api/.env
+    volumes:
+      - svoy_storage:/home/user/svoy_storage
+    depends_on:
+      - postgres
+      - redis
+
+  admin:
+    build: ./apps/admin
+    restart: unless-stopped
+    env_file:
+      - ./apps/admin/.env
+    depends_on:
+      - api
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+    volumes:
+      - ./deploy/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - api
+      - admin
+
+volumes:
+  postgres_data:
+  svoy_storage:
