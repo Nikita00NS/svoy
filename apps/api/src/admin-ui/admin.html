@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>СВОЙ — Панель</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0a0f;--card:#15151d;--card2:#1c1c26;--border:#262631;--text:#f5f5f7;--muted:#9a9aab;--accent:#7c3aed;--accent2:#a78bfa;--green:#22c55e;--blue:#3b82f6}
+*{box-sizing:border-box}body{margin:0;font-family:'Manrope',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+a{color:var(--accent2);text-decoration:none}
+.container{max-width:1320px;margin:0 auto;padding:32px 24px}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px}
+.logo{display:flex;align-items:center;gap:12px;font-weight:800;font-size:28px;letter-spacing:-.02em}
+.logo-mark{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#ec4899);display:grid;place-items:center;font-weight:800;color:#fff}
+.badge{padding:4px 12px;border-radius:999px;background:var(--card);border:1px solid var(--border);font-size:12px;color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:border-color .2s}
+.card:hover{border-color:#2f2f40}
+.card-highlight{background:linear-gradient(135deg,rgba(124,58,237,.12),rgba(236,72,153,.08));border-color:rgba(124,58,237,.3)}
+.grid{display:grid;gap:16px}.grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}.grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}.grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.btn{appearance:none;border:0;padding:12px 20px;border-radius:12px;font-weight:600;cursor:pointer;transition:all .2s;font-size:14px;display:inline-flex;align-items:center;gap:8px;justify-content:center}
+.btn-primary{background:var(--text);color:#000}.btn-primary:hover{background:#fff;transform:translateY(-1px)}
+.btn-accent{background:linear-gradient(135deg,var(--accent),#ec4899);color:#fff}.btn-accent:hover{opacity:.9;transform:translateY(-1px)}
+.btn-ghost{background:var(--card2);color:var(--text);border:1px solid var(--border)}.btn-ghost:hover{background:var(--card);border-color:var(--muted)}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.input,.select,.textarea{width:100%;padding:14px 16px;border-radius:12px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:14px;transition:border-color .2s,box-shadow .2s}
+.input:focus,.select:focus,.textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,58,237,.15)}
+.textarea{min-height:120px;resize:vertical}
+.table{width:100%;border-collapse:separate;border-spacing:0;font-size:14px}.table th{text-align:left;padding:12px 16px;color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border)}.table td{padding:14px 16px;border-bottom:1px solid var(--border);vertical-align:middle}
+.table tr:last-child td{border-bottom:0}
+.stat{position:relative;overflow:hidden}.stat::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--border),transparent)}
+.stat-value{font-size:32px;font-weight:800;letter-spacing:-.03em;margin:8px 0 4px}.stat-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 24px;background:var(--card);padding:6px;border-radius:14px;border:1px solid var(--border);width:fit-content}
+.tab{padding:8px 16px;border-radius:10px;background:transparent;border:0;color:var(--muted);cursor:pointer;font-weight:600;font-size:13px;transition:all .2s}
+.tab:hover{color:var(--text);background:var(--card2)}.tab.active{background:var(--text);color:#000}
+.muted{color:var(--muted)} .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.empty{padding:40px 24px;text-align:center;color:var(--muted)}.empty b{color:var(--text)}
+.kbd{padding:2px 8px;border-radius:6px;background:var(--card2);border:1px solid var(--border);font-size:12px;font-family:monospace}
+.login-wrap{max-width:440px;margin:80px auto 0}.login-logo{display:flex;flex-direction:column;align-items:center;gap:16px;margin-bottom:32px}
+.login-logo .logo-mark{width:64px;height:64px;border-radius:18px;font-size:28px}
+.login-title{font-size:28px;font-weight:800;letter-spacing:-.03em;text-align:center}
+.login-sub{color:var(--muted);text-align:center;font-size:14px;margin-top:4px}
+.divider{display:flex;align-items:center;gap:16px;margin:20px 0;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
+@media(max-width:900px){.grid-2,.grid-3,.grid-4{grid-template-columns:1fr}.container{padding:20px 16px}}
+</style>
+</head>
+<body>
+<div class="container">
+  <div id="authBox"></div>
+  <div id="app" style="display:none"></div>
+</div>
+<script>
+const API = location.origin;
+
+function api(path, opts={}){
+  return fetch(API+path, { credentials:'include', headers:{'Content-Type':'application/json', ...(opts.headers||{})}, ...opts })
+    .then(async r=>{
+      const t = await r.text(); let j; try{ j=JSON.parse(t); }catch{ j={raw:t}; }
+      if(!r.ok) throw new Error((j.message||j.error?.message||j.raw||'API error')+' ['+r.status+']');
+      if(j && j.success===false) throw new Error(j.error?.message||'API failed');
+      return j.data ?? j;
+    });
+}
+async function safeApi(path, fallback){ try{ return await api(path); }catch(e){ return fallback; } }
+
+let me=null, data={dashboard:null,users:[],intakes:[],channels:[],bots:[],content:[],moderation:[],rss:[],audit:[]}, tab='dashboard';
+let filters={users:'',intake:'',content:''};
+let forms={channel:{title:'',handle:'',telegramId:'',postWatermark:'СВОЙ'},bot:{username:'',tokenRef:'',webhookPath:'',internalKey:''},moderation:{chatId:'',targetTelegramId:'',messageId:'',action:'WARN',reason:''},rss:{title:'',url:''},schedule:{}};
+let botLoginToken='';
+
+function renderAuth(){
+  const el=document.getElementById('authBox');
+  if(me && me.authenticated){
+    el.innerHTML = `
+      <div class="header">
+        <div class="logo"><div class="logo-mark">С</div> СВОЙ <span class="badge">OWNER • ${me.telegramUserId}</span></div>
+        <div class="row">
+          <button class="btn btn-ghost" onclick="setupWebhook()">⚡ Синхронизировать бота</button>
+          <button class="btn btn-ghost" onclick="logout()">Выйти</button>
+        </div>
+      </div>
+    `;
+    document.getElementById('app').style.display='block';
+  } else {
+    el.innerHTML = `
+      <div class="login-wrap">
+        <div class="login-logo">
+          <div class="logo-mark">С</div>
+          <div>
+            <div class="login-title">Вход в СВОЙ</div>
+            <div class="login-sub">Панель владельца сети каналов</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="grid">
+            <div>
+              <div class="stat-label" style="margin-bottom:8px">Логин</div>
+              <input id="loginInput" class="input" placeholder="Введите логин" value="RUPYT" />
+            </div>
+            <div>
+              <div class="stat-label" style="margin-bottom:8px">Пароль</div>
+              <input id="passInput" class="input" placeholder="Введите пароль" type="password" />
+            </div>
+            <button class="btn btn-accent" style="width:100%;margin-top:4px" onclick="loginPwd()">Войти</button>
+            <div id="pwdErr" style="color:#f87171;font-size:13px"></div>
+          </div>
+          <div class="divider">или</div>
+          <button class="btn btn-ghost" style="width:100%" id="botBtn" onclick="requestBot()">Войти через @SVOIROBOT</button>
+          <div id="botStatus" class="muted" style="margin-top:12px;font-size:13px;white-space:pre-wrap;text-align:center"></div>
+        </div>
+        <div class="card" style="margin-top:16px;background:transparent;border-style:dashed;text-align:center">
+          <div class="muted" style="font-size:13px">Доступ только для владельца. Бот должен быть администратором канала.</div>
+        </div>
+      </div>`;
+    document.getElementById('app').style.display='none';
+  }
+}
+
+async function loginPwd(){
+  const login=document.getElementById('loginInput').value.trim();
+  const password=document.getElementById('passInput').value;
+  const err=document.getElementById('pwdErr'); err.textContent='Входим...';
+  try{ await api('/auth/login',{method:'POST',body:JSON.stringify({login,password})}); location.reload(); }catch(e){ err.textContent=e.message; }
+}
+async function requestBot(){
+  const st=document.getElementById('botStatus'); const btn=document.getElementById('botBtn');
+  st.textContent='Отправляю запрос в бот...'; btn.disabled=true;
+  try{
+    const res=await api('/auth/bot/request',{method:'POST'}); botLoginToken=res.token;
+    st.textContent='Открой @SVOIROBOT и нажми «Да, это я»';
+    const interval=setInterval(async()=>{
+      try{
+        const s=await api('/auth/bot/status/'+botLoginToken);
+        if(s.approved){ await api('/auth/bot/consume/'+botLoginToken,{method:'POST'}); clearInterval(interval); st.textContent='Успешно!'; location.reload(); }
+        if(s.found===false){ clearInterval(interval); st.textContent='Запрос истек'; btn.disabled=false; }
+      }catch(e){ clearInterval(interval); st.textContent='Ошибка: '+e.message; btn.disabled=false; }
+    },2000);
+  }catch(e){ st.textContent='Ошибка: '+e.message; btn.disabled=false; }
+}
+async function logout(){ await api('/auth/logout',{method:'POST'}); location.reload(); }
+async function setupWebhook(){ try{ const r=await api('/admin/setup/master-bot',{method:'POST',body:JSON.stringify({})}); alert('Готово'); }catch(e){ alert('Ошибка: '+e.message); } }
+
+function renderApp(){
+  if(!me||!me.authenticated) return;
+  const app=document.getElementById('app');
+  const tabs=['dashboard','intakes','content','channels','bots','moderation','rss','users','audit'];
+  const tabsLabels={dashboard:'Обзор',intakes:'Заявки',content:'Контент',channels:'Каналы',bots:'Боты',moderation:'Модерация',rss:'Источники',users:'Команда',audit:'Логи'};
+  const filteredUsers=data.users.filter(x=>!filters.users||`${x.username||''} ${x.telegramUserId}`.toLowerCase().includes(filters.users.toLowerCase()));
+  const filteredIntakes=data.intakes.filter(x=>!filters.intake||`${x.type} ${x.text||''}`.toLowerCase().includes(filters.intake.toLowerCase()));
+  const filteredContent=data.content.filter(x=>!filters.content||`${x.title||''} ${x.body||''} ${x.status||''}`.toLowerCase().includes(filters.content.toLowerCase()));
+  const d=data.dashboard||{};
+  app.innerHTML=`
+    <div class="tabs">${tabs.map(t=>`<button class="tab ${tab===t?'active':''}" onclick="switchTab('${t}')">${tabsLabels[t]||t}</button>`).join('')}</div>
+    ${tab==='dashboard'?`
+      <div class="grid grid-4" style="margin-bottom:24px">
+        <div class="card stat"><div class="stat-label">Пользователи</div><div class="stat-value">${d.users??data.users.length}</div><div class="muted" style="font-size:13px">всего в базе</div></div>
+        <div class="card stat"><div class="stat-label">Заявки</div><div class="stat-value">${d.requests??data.intakes.length}</div><div class="muted" style="font-size:13px">из Telegram бота</div></div>
+        <div class="card stat"><div class="stat-label">Контент</div><div class="stat-value">${d.content??data.content.length}</div><div class="muted" style="font-size:13px">постов создано</div></div>
+        <div class="card stat card-highlight"><div class="stat-label">Боты</div><div class="stat-value">${d.bots??data.bots.length}</div><div class="muted" style="font-size:13px">активных • @SVOIROBOT</div></div>
+      </div>
+      <div class="grid grid-3">
+        <div class="card"><h3 style="margin:0 0 8px">Быстрый старт</h3><div class="muted" style="font-size:13px;line-height:1.6">1. Создай канал во вкладке Каналы<br>2. Добавь @SVOIROBOT админом<br>3. Добавь RSS-источник → контент сам появится<br>4. Включи AI-переписывание</div><button class="btn btn-primary" style="margin-top:16px;width:100%" onclick="switchTab('channels')">Создать канал</button></div>
+        <div class="card"><h3 style="margin:0 0 8px">Последние заявки</h3>${data.intakes.slice(0,3).map(i=>`<div style="padding:10px 0;border-bottom:1px solid var(--border)"><b style="font-size:12px;text-transform:uppercase;color:var(--accent)">${i.type}</b><div style="font-size:13px;margin-top:4px">${(i.text||'—').slice(0,80)}</div></div>`).join('')||'<div class="empty">Пока нет заявок. Напиши боту /start</div>'}</div>
+        <div class="card"><h3 style="margin:0 0 8px">Авто-модерация</h3><div class="muted" style="font-size:13px;line-height:1.6">Бот сам удаляет спам, мат и рекламу если включить фильтры. Настрой в Модерации.</div><button class="btn btn-ghost" style="margin-top:16px;width:100%" onclick="switchTab('moderation')">Настроить</button></div>
+      </div>
+    `:''}
+    ${tab==='users'?`<div class="card"><div class="row" style="justify-content:space-between;margin-bottom:16px"><h2 style="margin:0">Команда</h2><input class="input" style="max-width:280px" placeholder="Поиск" value="${filters.users}" oninput="setFilter('users',this.value)"/></div><table class="table"><thead><tr><th>Пользователь</th><th>Telegram ID</th><th>Роль</th><th>Статус</th><th></th></tr></thead><tbody>${filteredUsers.map(i=>`<tr><td><b>@${i.username||'—'}</b></td><td class="muted">${i.telegramUserId}</td><td><span class="badge">${i.role}</span></td><td>${i.isActive?'● Активен':'—'}</td><td><div class="row"><button class="btn btn-ghost" style="padding:6px 10px;font-size:12px" onclick="patchUser('${i.id}','MODERATOR')">Модератор</button><button class="btn btn-ghost" style="padding:6px 10px;font-size:12px" onclick="delUser('${i.id}')">Удалить</button></div></td></tr>`).join('')}</tbody></table></div>`:''}
+    ${tab==='intakes'?`<div class="card"><div class="row" style="justify-content:space-between;margin-bottom:16px"><h2 style="margin:0">Заявки из бота</h2><input class="input" style="max-width:280px" placeholder="Поиск по типу" value="${filters.intake}" oninput="setFilter('intake',this.value)"/></div>${filteredIntakes.length?`<table class="table"><thead><tr><th>Тип</th><th>Статус</th><th>Пользователь</th><th>Сообщение</th><th>Дата</th></tr></thead><tbody>${filteredIntakes.map(i=>`<tr><td><span class="badge" style="background:rgba(124,58,237,.15);color:var(--accent2);border-color:rgba(124,58,237,.3)">${i.type}</span></td><td>${i.status}</td><td class="muted">${i.user?.username||i.user?.telegramUserId||'—'}</td><td style="max-width:320px">${(i.text||'—').slice(0,180)}</td><td class="muted">${new Date(i.createdAt||Date.now()).toLocaleDateString('ru-RU')}</td></tr>`).join('')}</tbody></table>`:`<div class="empty">Заявок пока нет. Открой @SVOIROBOT и нажми любую нижнюю кнопку.</div>`}</div>`:''}
+    ${tab==='channels'?`<div class="grid grid-2"><div class="card"><h3 style="margin:0 0 16px">Новый канал</h3><div class="grid"><div><div class="stat-label" style="margin-bottom:6px">Название</div><input class="input" placeholder="СВОЙ | Новости" value="${forms.channel.title}" oninput="setForm('channel','title',this.value)"/></div><div><div class="stat-label" style="margin-bottom:6px">Handle</div><input class="input" placeholder="@svoy_channel" value="${forms.channel.handle}" oninput="setForm('channel','handle',this.value)"/></div><div><div class="stat-label" style="margin-bottom:6px">Telegram ID</div><input class="input" placeholder="-100..." value="${forms.channel.telegramId}" oninput="setForm('channel','telegramId',this.value)"/><div class="muted" style="font-size:12px;margin-top:6px">Узнай через @userinfobot, переслав пост из канала</div></div><div><div class="stat-label" style="margin-bottom:6px">Ватермарка</div><input class="input" placeholder="СВОЙ" value="${forms.channel.postWatermark}" oninput="setForm('channel','postWatermark',this.value)"/></div><button class="btn btn-accent" onclick="createChannel()">Создать канал</button></div></div><div class="card"><h3 style="margin:0 0 16px">Твои каналы</h3>${data.channels.length?`<div class="grid">${data.channels.map(c=>`<div class="card" style="background:var(--bg)"><div class="row" style="justify-content:space-between"><b>${c.title}</b><span class="badge">${c.handle||c.telegramId||'—'}</span></div><div class="muted" style="font-size:13px;margin-top:8px">Ватермарка: ${c.postWatermark||'СВОЙ'} • ${c.isActive?'Активен':'Выкл'}</div></div>`).join('')}</div>`:`<div class="empty"><b>Каналов нет</b><div style="margin-top:8px">Создай первый канал слева. Потом добавь @SVOIROBOT админом в Telegram.</div></div>`}</div></div>`:''}
+    ${tab==='bots'?`<div class="grid grid-2"><div class="card"><h3 style="margin:0 0 16px">Добавить бота</h3><div class="grid"><input class="input" placeholder="Username без @, напр. SVOIROBOT" value="${forms.bot.username}" oninput="setForm('bot','username',this.value)"/><input class="input" placeholder="Token Ref (env:MASTER_BOT_TOKEN)" value="${forms.bot.tokenRef}" oninput="setForm('bot','tokenRef',this.value)"/><input class="input" placeholder="Webhook path /telegram/webhook/master" value="${forms.bot.webhookPath}" oninput="setForm('bot','webhookPath',this.value)"/><input class="input" placeholder="Internal key master" value="${forms.bot.internalKey}" oninput="setForm('bot','internalKey',this.value)"/><button class="btn btn-accent" onclick="createBot()">Добавить</button></div></div><div class="card"><h3 style="margin:0 0 16px">Подключенные боты</h3><div class="grid">${data.bots.map(b=>`<div class="card" style="background:var(--bg)"><div class="row" style="justify-content:space-between"><b>@${b.username}</b>${b.isMaster?'<span class="badge" style="background:rgba(34,197,94,.15);color:var(--green);border-color:rgba(34,197,94,.3)">MASTER</span>':''}</div><div class="muted" style="font-size:12px;margin-top:8px;word-break:break-all">${b.webhookPath}</div></div>`).join('')||'<div class="empty">Только @SVOIROBOT</div>'}</div></div></div>`:''}
+    ${tab==='content'?`<div class="card"><div class="row" style="justify-content:space-between;margin-bottom:16px"><h2 style="margin:0">Контент • AI-писатель</h2><input class="input" style="max-width:280px" placeholder="Поиск" value="${filters.content}" oninput="setFilter('content',this.value)"/></div>${filteredContent.length?`<table class="table"><thead><tr><th>Пост</th><th>Статус</th><th>AI-версия</th><th>Действия</th></tr></thead><tbody>${filteredContent.map(i=>`<tr><td><b>${i.title||'Без названия'}</b><div class="muted" style="font-size:13px;max-width:300px;margin-top:4px">${(i.body||'').slice(0,100)}</div></td><td><span class="badge">${i.status}</span></td><td class="muted" style="max-width:200px">${(i.aiRewrittenText||'—').slice(0,80)}</td><td><div class="row"><button class="btn btn-ghost" style="padding:6px 10px;font-size:12px" onclick="actContent('${i.id}','rewrite')">AI</button><button class="btn btn-ghost" style="padding:6px 10px;font-size:12px" onclick="actContent('${i.id}','approve')">Approve</button><button class="btn btn-primary" style="padding:6px 10px;font-size:12px" onclick="actContent('${i.id}','publish-now')">Опубликовать</button></div></td></tr>`).join('')}</tbody></table>`:`<div class="empty"><b>Контента нет</b><div style="margin-top:8px">Добавь RSS-источник или создай вручную. AI сам перепишет.</div></div>`}</div>`:''}
+    ${tab==='moderation'?`<div class="grid grid-2"><div class="card"><h3 style="margin:0 0 16px">Наказать в канале</h3><div class="grid"><input class="input" placeholder="Chat ID -100..." value="${forms.moderation.chatId}" oninput="setForm('moderation','chatId',this.value)"/><input class="input" placeholder="Telegram ID пользователя" value="${forms.moderation.targetTelegramId}" oninput="setForm('moderation','targetTelegramId',this.value)"/><input class="input" placeholder="Message ID (для удаления)" value="${forms.moderation.messageId}" oninput="setForm('moderation','messageId',this.value)"/><select class="select" value="${forms.moderation.action}" onchange="setForm('moderation','action',this.value)"><option>WARN</option><option>MUTE</option><option>BAN</option><option>DELETE</option></select><textarea class="textarea" placeholder="Причина" oninput="setForm('moderation','reason',this.value)">${forms.moderation.reason}</textarea><button class="btn btn-accent" onclick="applyMod()">Применить</button></div></div><div class="card"><h3 style="margin:0 0 16px">Последние действия</h3><table class="table"><thead><tr><th>Действие</th><th>Цель</th><th>Причина</th></tr></thead><tbody>${data.moderation.map(i=>`<tr><td><span class="badge">${i.action}</span></td><td>${i.targetTelegramId}</td><td class="muted">${i.reason||'—'}</td></tr>`).join('')||`<tr><td colspan="3"><div class="empty" style="padding:20px">Логов нет</div></td></tr>`}</tbody></table></div></div>`:''}
+    ${tab==='rss'?`<div class="grid grid-2"><div class="card"><h3 style="margin:0 0 16px">RSS → авто-контент</h3><div class="grid"><div><div class="stat-label" style="margin-bottom:6px">Название источника</div><input class="input" placeholder="Lenta.ru" value="${forms.rss.title}" oninput="setForm('rss','title',this.value)"/></div><div><div class="stat-label" style="margin-bottom:6px">URL ленты</div><input class="input" placeholder="https://lenta.ru/rss" value="${forms.rss.url}" oninput="setForm('rss','url',this.value)"/></div><button class="btn btn-accent" onclick="createRss()">Добавить источник</button><div class="muted" style="font-size:12px">После добавления жми Fetch → новости превратятся в контент в DRAFT</div></div></div><div class="card"><h3 style="margin:0 0 16px">Подключенные источники</h3>${data.rss.length?`<table class="table"><thead><tr><th>Название</th><th>URL</th><th></th></tr></thead><tbody>${data.rss.map(i=>`<tr><td><b>${i.title}</b></td><td class="muted" style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${i.url}</td><td><button class="btn btn-ghost" style="padding:6px 10px;font-size:12px" onclick="fetchRss('${i.id}')">Fetch</button></td></tr>`).join('')}</tbody></table>`:`<div class="empty">Добавь первую ленту — например https://lenta.ru/rss</div>`}</div></div>`:''}
+    ${tab==='audit'?`<div class="card"><h3 style="margin:0 0 16px">Логи действий</h3><table class="table"><thead><tr><th>Действие</th><th>Сущность</th><th>ID</th><th>Время</th></tr></thead><tbody>${data.audit.map(i=>`<tr><td><span class="badge">${i.action}</span></td><td>${i.entityType}</td><td class="muted">${(i.entityId||'—').slice(0,8)}</td><td class="muted">${new Date(i.createdAt).toLocaleString('ru-RU')}</td></tr>`).join('')||`<tr><td colspan="4"><div class="empty">Логов нет</div></td></tr>`}</tbody></table></div>`:''}
+  `;
+}
+function switchTab(t){ tab=t; renderApp(); }
+function setFilter(k,v){ filters[k]=v; renderApp(); }
+function setForm(g,k,v){ forms[g][k]=v; }
+function setSchedule(id,v){ forms.schedule[id]=v; }
+async function loadAll(){
+  try{ const m=await api('/auth/me'); me=m; }catch{ me={authenticated:false}; }
+  renderAuth();
+  if(!me.authenticated){ document.getElementById('app').innerHTML=''; return; }
+  const dashboard = await safeApi('/admin/dashboard', {users:0,channels:0,bots:0,requests:0,content:0,moderation:0,rss:0});
+  const users = await safeApi('/users?limit=50', []);
+  const intakes = await safeApi('/admin/intakes?limit=50', []);
+  const channels = await safeApi('/channels', []);
+  const bots = await safeApi('/bots', []);
+  const content = await safeApi('/content?limit=50', []);
+  const moderation = await safeApi('/moderation', []);
+  const rss = await safeApi('/rss', []);
+  const audit = await safeApi('/audit?limit=50', []);
+  const unwrap=d=>Array.isArray(d)?d:(d.items||[]);
+  data={dashboard,users:unwrap(users),intakes:unwrap(intakes),channels:Array.isArray(channels)?channels:channels.items||channels,bots:Array.isArray(bots)?bots:bots.items||bots,content:unwrap(content),moderation:Array.isArray(moderation)?moderation:moderation.items||moderation,rss:Array.isArray(rss)?rss:rss.items||rss,audit:unwrap(audit)};
+  renderApp();
+}
+async function submit(p,b,m='POST'){ try{ await api(p,{method:m,body:JSON.stringify(b)}); }catch(e){ alert(e.message); } await loadAll(); }
+async function remove(p){ try{ await api(p,{method:'DELETE'}); }catch(e){ alert(e.message); } await loadAll(); }
+async function patchUser(id,role){ await submit('/users/'+id,{role},'PATCH'); }
+async function delUser(id){ if(confirm('Удалить?')) await remove('/users/'+id); }
+async function createChannel(){ await submit('/channels',forms.channel); }
+async function createBot(){ await submit('/bots',forms.bot); }
+async function createRss(){ await submit('/rss',forms.rss); }
+async function fetchRss(id){ await submit('/rss/'+id+'/fetch',{}); }
+async function actContent(id,a){ await submit('/content/'+id+'/'+a,{}); }
+async function delContent(id){ await remove('/content/'+id); }
+async function scheduleContent(id){ const s=forms.schedule[id]; if(!s){ alert('Выбери дату'); return; } await submit('/content/'+id+'/schedule',{scheduledFor:s}); }
+async function applyMod(){ const b={...forms.moderation,messageId:forms.moderation.messageId?Number(forms.moderation.messageId):undefined}; await submit('/moderation/apply',b); }
+async function escalateMod(){ await submit('/moderation/escalate',{chatId:forms.moderation.chatId,targetTelegramId:forms.moderation.targetTelegramId,reason:forms.moderation.reason}); }
+loadAll();
+</script>
+</body>
+</html>
