@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>СВОЙ — Панель управления</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0a0f;--card:#15151d;--card2:#1c1c26;--border:#262631;--text:#f5f5f7;--muted:#9a9aab;--accent:#7c3aed;--accent2:#a78bfa;--green:#22c55e;--blue:#3b82f6;--red:#ef4444;--yellow:#f59e0b}
+*{box-sizing:border-box}body{margin:0;font-family:'Manrope',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.container{max-width:1360px;margin:0 auto;padding:28px 20px}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:12px}
+.logo{display:flex;align-items:center;gap:12px;font-weight:800;font-size:28px;letter-spacing:-.02em}
+.logo-mark{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#ec4899);display:grid;place-items:center;color:#fff;font-weight:800}
+.badge{padding:4px 10px;border-radius:999px;background:var(--card2);border:1px solid var(--border);font-size:11px;color:var(--muted);font-weight:600}
+.card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:22px;margin-bottom:16px}
+.card-highlight{border-color:rgba(124,58,237,.35);background:linear-gradient(135deg,rgba(124,58,237,.12),rgba(236,72,153,.08))}
+.grid{display:grid;gap:14px}.grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}.grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}.grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.btn{appearance:none;border:0;padding:11px 18px;border-radius:11px;font-weight:600;cursor:pointer;transition:.18s;font-size:13px;display:inline-flex;align-items:center;gap:6px;justify-content:center}
+.btn-primary{background:var(--text);color:#000}.btn-primary:hover{background:#fff}
+.btn-accent{background:linear-gradient(135deg,var(--accent),#ec4899);color:#fff}.btn-ghost{background:var(--card2);color:var(--text);border:1px solid var(--border)}.btn-ghost:hover{border-color:var(--muted)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.input,.select,.textarea{width:100%;padding:12px 14px;border-radius:11px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px}
+.input:focus,.select:focus,.textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,58,237,.15)}
+.textarea{min-height:90px;resize:vertical}
+.table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}.table th{text-align:left;padding:10px 12px;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border)}.table td{padding:12px;border-bottom:1px solid var(--border);vertical-align:top}
+.muted{color:var(--muted)}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 20px;background:var(--card);padding:5px;border-radius:14px;border:1px solid var(--border);width:fit-content}
+.tab{padding:7px 14px;border-radius:10px;background:transparent;border:0;color:var(--muted);cursor:pointer;font-weight:600;font-size:12px}
+.tab.active{background:var(--text);color:#000}
+.stat-value{font-size:30px;font-weight:800;letter-spacing:-.03em;margin:6px 0 2px}.stat-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;font-weight:600}
+.empty{padding:32px;text-align:center;color:var(--muted);font-size:13px}
+.kbd{padding:2px 7px;border-radius:6px;background:var(--card2);border:1px solid var(--border);font-size:11px;font-family:monospace}
+.login-wrap{max-width:420px;margin:70px auto 0}.login-logo{display:flex;flex-direction:column;align-items:center;gap:14px;margin-bottom:28px}
+@media(max-width:900px){.grid-2,.grid-3,.grid-4{grid-template-columns:1fr}.container{padding:18px 14px}}
+</style>
+</head>
+<body>
+<div class="container">
+<div id="authBox"></div>
+<div id="app" style="display:none"></div>
+</div>
+<script>
+const API = location.origin;
+function api(path, opts={}){return fetch(API+path,{credentials:'include',headers:{'Content-Type':'application/json',...(opts.headers||{})},...opts}).then(async r=>{const t=await r.text();let j;try{j=JSON.parse(t)}catch{j={raw:t}};if(!r.ok) throw new Error((j.message||j.error?.message||j.raw||'API error')+' ['+r.status+']');if(j&&j.success===false) throw new Error(j.error?.message||'API failed');return j.data??j;});}
+async function safeApi(path, fallback){try{return await api(path);}catch(e){console.warn(path,e.message);return fallback;}}
+
+let me=null,data={dashboard:null,users:[],intakes:[],channels:[],bots:[],content:[],moderation:[],rss:[],audit:[]},tab='dashboard';
+let filters={users:'',intake:'',content:''};
+let forms={channel:{title:'',handle:'',telegramId:'',postWatermark:'СВОЙ',description:'',autoModeration:true,autoPublishRss:false},bot:{username:'',tokenRef:'',webhookPath:'',internalKey:''},moderation:{chatId:'',targetTelegramId:'',messageId:'',action:'WARN',reason:''},rss:{title:'',url:'',channelId:'',autoPublish:false},content:{title:'',body:'',channelId:'',mediaType:'TEXT',pollQuestion:'',pollOptions:['',''],watermarkText:'СВОЙ'},intakeComment:{},schedule:{},channelEdit:{}};
+
+function renderAuth(){
+  const el=document.getElementById('authBox');
+  if(me&&me.authenticated){
+    el.innerHTML=`<div class="header"><div class="logo"><div class="logo-mark">С</div> СВОЙ <span class="badge">OWNER • ${me.telegramUserId} • полная версия</span></div><div class="row"><button class="btn btn-ghost" onclick="setupWebhook()">⚡ Синхронизировать бота</button><button class="btn btn-ghost" onclick="logout()">Выйти</button></div></div>`;
+    document.getElementById('app').style.display='block';
+  }else{
+    el.innerHTML=`<div class="login-wrap"><div class="login-logo"><div style="width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,#7c3aed,#ec4899);display:grid;place-items:center;color:#fff;font-weight:800;font-size:28px">С</div><div style="text-align:center"><div style="font-size:26px;font-weight:800">Вход в СВОЙ</div><div class="muted" style="font-size:13px;margin-top:4px">Управление сеткой каналов • 24/7</div></div></div><div class="card"><div class="grid"><input id="loginInput" class="input" placeholder="Логин" value="RUPYT"/><input id="passInput" class="input" placeholder="Пароль" type="password"/><button class="btn btn-accent" style="width:100%" onclick="loginPwd()">Войти</button><div id="pwdErr" style="color:#f87171;font-size:12px"></div></div><div style="display:flex;align-items:center;gap:12px;margin:18px 0;color:var(--muted);font-size:11px;text-transform:uppercase"><div style="flex:1;height:1px;background:var(--border)"></div>или<div style="flex:1;height:1px;background:var(--border)"></div></div><button class="btn btn-ghost" style="width:100%" id="botBtn" onclick="requestBot()">Войти через @SVOIROBOT</button><div id="botStatus" class="muted" style="margin-top:10px;font-size:12px;text-align:center;white-space:pre-wrap"></div></div></div>`;
+    document.getElementById('app').style.display='none';
+  }
+}
+async function loginPwd(){const l=document.getElementById('loginInput').value.trim(),p=document.getElementById('passInput').value,err=document.getElementById('pwdErr');err.textContent='Входим...';try{await api('/auth/login',{method:'POST',body:JSON.stringify({login:l,password:p})});location.reload();}catch(e){err.textContent=e.message;}}
+async function requestBot(){const st=document.getElementById('botStatus'),btn=document.getElementById('botBtn');st.textContent='Отправляю...';btn.disabled=true;try{const r=await api('/auth/bot/request',{method:'POST'});const token=r.token;st.textContent='Открой @SVOIROBOT и нажми «Да, это я»';const iv=setInterval(async()=>{try{const s=await api('/auth/bot/status/'+token);if(s.approved){await api('/auth/bot/consume/'+token,{method:'POST'});clearInterval(iv);location.reload();}if(s.found===false){clearInterval(iv);st.textContent='Истекло';btn.disabled=false;}}catch(e){clearInterval(iv);st.textContent=e.message;btn.disabled=false;}},2000);}catch(e){st.textContent=e.message;btn.disabled=false;}}
+async function logout(){await api('/auth/logout',{method:'POST'});location.reload();}
+async function setupWebhook(){try{const r=await api('/admin/setup/master-bot',{method:'POST',body:JSON.stringify({})});alert('Webhook OK');}catch(e){alert(e.message);}}
+
+function renderApp(){
+  if(!me||!me.authenticated) return;
+  const app=document.getElementById('app');
+  const tabs={dashboard:'Обзор',intakes:'Заявки',content:'Контент',channels:'Каналы',bots:'Боты',moderation:'Модерация',rss:'Источники',users:'Команда',audit:'Логи'};
+  const d=data.dashboard||{};
+  app.innerHTML=`
+    <div class="tabs">${Object.entries(tabs).map(([k,l])=>`<button class="tab ${tab===k?'active':''}" onclick="switchTab('${k}')">${l}</button>`).join('')}</div>
+    ${tab==='dashboard'?`
+      <div class="grid grid-4" style="margin-bottom:18px">
+        <div class="card"><div class="stat-label">Пользователи</div><div class="stat-value">${d.users??data.users.length}</div><div class="muted" style="font-size:12px">база</div></div>
+        <div class="card"><div class="stat-label">Заявки / Реклама</div><div class="stat-value">${d.requests??data.intakes.length}</div><div class="muted" style="font-size:12px">${data.intakes.filter(x=>x.type==='AD_ORDER').length} на рекламу</div></div>
+        <div class="card"><div class="stat-label">Контент</div><div class="stat-value">${d.content??data.content.length}</div><div class="muted" style="font-size:12px">постов • ${data.content.filter(c=>c.status==='PUBLISHED').length} опубликовано</div></div>
+        <div class="card card-highlight"><div class="stat-label">Выручка (заглушка)</div><div class="stat-value">$${(data.intakes.filter(x=>x.type==='AD_ORDER'&&x.status==='APPROVED').length*150).toLocaleString()}</div><div class="muted" style="font-size:12px">~$150 за рекламу • авто</div></div>
+      </div>
+      <div class="grid grid-3">
+        <div class="card"><h3 style="margin:0 0 8px">⚡ Быстрые действия</h3><div class="grid" style="margin-top:12px"><button class="btn btn-accent" onclick="switchTab('content')">+ Новый пост / Опрос</button><button class="btn btn-ghost" onclick="switchTab('channels')">+ Канал</button><button class="btn btn-ghost" onclick="switchTab('rss')">+ RSS источник</button></div></div>
+        <div class="card"><h3 style="margin:0 0 8px">Последние заявки</h3>${data.intakes.slice(0,4).map(i=>`<div style="padding:8px 0;border-bottom:1px solid var(--border)"><b style="font-size:11px;color:var(--accent2)">${i.type}</b> <span class="badge">${i.status}</span><div style="font-size:12px;margin-top:4px">${(i.text||'—').slice(0,70)}</div>${i.moderatorComment?`<div style="font-size:11px;color:var(--yellow);margin-top:4px">💬 Модератор: ${i.moderatorComment}</div>`:''}</div>`).join('')||'<div class="empty">Нет заявок</div>'}</div>
+        <div class="card"><h3 style="margin:0 0 8px">🤖 Авто-режимы (вишенка)</h3><div class="muted" style="font-size:12px;line-height:1.6">
+          • Авто-модерация мата/спама включена если в канале <span class="kbd">autoModeration=true</span><br>
+          • Авто-публикация RSS если <span class="kbd">autoPublish=true</span> + канал выбран<br>
+          • AI переписывает новости из RSS через Groq/Gemini (бесплатно)<br>
+          • Бот сам шлет статус заявки клиенту в ТГ<br>
+          • Расписание публикаций работает 24/7 через воркеры
+        </div></div>
+      </div>
+    `:''}
+    ${tab==='intakes'?`<div class="card"><div class="row" style="justify-content:space-between;margin-bottom:12px"><h2 style="margin:0">Заявки • Реклама • Поддержка</h2><input class="input" style="max-width:260px" placeholder="Поиск" value="${filters.intake}" oninput="setFilter('intake',this.value)"/></div>
+      <table class="table"><thead><tr><th>Тип</th><th>Статус</th><th>Клиент</th><th>Текст / Бюджет</th><th>Коммент модератора</th><th>Действия</th></tr></thead><tbody>
+      ${data.intakes.filter(x=>!filters.intake||`${x.type} ${x.text||''}`.toLowerCase().includes(filters.intake.toLowerCase())).map(i=>`
+        <tr>
+          <td><span class="badge" style="background:rgba(124,58,237,.15);color:var(--accent2)">${i.type}</span></td>
+          <td><span class="badge">${i.status}</span></td>
+          <td class="muted">@${i.user?.username||i.telegramChatId}</td>
+          <td style="max-width:260px"><div style="font-size:12px">${(i.text||'—').slice(0,120)}</div><div class="muted" style="font-size:11px">${i.extraJson ? JSON.stringify(i.extraJson).slice(0,60) : ''}</div></td>
+          <td><input class="input" style="padding:6px 8px;font-size:11px" placeholder="Коммент..." value="${(forms.intakeComment[i.id]!==undefined?forms.intakeComment[i.id]:(i.moderatorComment||''))}" oninput="setIntakeComment('${i.id}',this.value)"/><div class="muted" style="font-size:10px;margin-top:4px">Увидит клиент в боте</div></td>
+          <td><div class="row">
+            <button class="btn btn-ghost" style="padding:5px 8px;font-size:11px" onclick="updateIntake('${i.id}','IN_REVIEW')">В работу</button>
+            <button class="btn btn-ghost" style="padding:5px 8px;font-size:11px;color:var(--green)" onclick="updateIntake('${i.id}','APPROVED')">✅ Одобрить</button>
+            <button class="btn btn-ghost" style="padding:5px 8px;font-size:11px;color:var(--red)" onclick="updateIntake('${i.id}','REJECTED')">❌ Отклонить</button>
+            <button class="btn btn-ghost" style="padding:5px 8px;font-size:11px" onclick="intakeToContent('${i.id}')">→ В контент</button>
+          </div></td>
+        </tr>`).join('')}
+      </tbody></table></div>`:''}
+    ${tab==='content'?`
+      <div class="card"><h3 style="margin:0 0 12px">+ Создать пост / Опрос / Рекламу</h3>
+        <div class="grid grid-2">
+          <div><div class="stat-label" style="margin-bottom:6px">Канал для публикации *</div><select class="select" id="contentChannel" value="${forms.content.channelId}" onchange="setForm('content','channelId',this.value)"><option value="">— выбери канал —</option>${data.channels.map(c=>`<option value="${c.id}" ${forms.content.channelId===c.id?'selected':''}>${c.title} (${c.handle||c.telegramId||''})</option>`).join('')}</select></div>
+          <div><div class="stat-label" style="margin-bottom:6px">Тип</div><select class="select" value="${forms.content.mediaType}" onchange="setForm('content','mediaType',this.value)"><option>TEXT</option><option>PHOTO</option><option>VIDEO</option><option>POLL</option></select></div>
+          <div><div class="stat-label" style="margin-bottom:6px">Заголовок</div><input class="input" placeholder="Заголовок поста" value="${forms.content.title}" oninput="setForm('content','title',this.value)"/></div>
+          <div><div class="stat-label" style="margin-bottom:6px">Ватермарка</div><input class="input" placeholder="СВОЙ" value="${forms.content.watermarkText}" oninput="setForm('content','watermarkText',this.value)"/></div>
+          <div style="grid-column:1/-1"><div class="stat-label" style="margin-bottom:6px">Текст поста</div><textarea class="textarea" placeholder="Текст поста... Поддержка HTML" oninput="setForm('content','body',this.value)">${forms.content.body}</textarea></div>
+          <div id="pollFields" style="grid-column:1/-1;display:${forms.content.mediaType==='POLL'?'block':'none'}"><div class="stat-label" style="margin-bottom:6px">Опрос</div><input class="input" style="margin-bottom:8px" placeholder="Вопрос опроса" value="${forms.content.pollQuestion}" oninput="setForm('content','pollQuestion',this.value)"/><div class="grid grid-2">${forms.content.pollOptions.map((o,idx)=>`<input class="input" placeholder="Вариант ${idx+1}" value="${o}" oninput="setPollOption(${idx},this.value)"/>`).join('')}<button class="btn btn-ghost" onclick="addPollOption()">+ вариант</button></div></div>
+        </div>
+        <div class="row" style="margin-top:14px"><button class="btn btn-accent" onclick="createContent()">Создать черновик</button><button class="btn btn-ghost" onclick="createContentAndPublish()">Создать и опубликовать сразу</button></div>
+        <div class="muted" style="font-size:11px;margin-top:8px">Если выберешь канал и нажмешь "Опубликовать сразу" — пост уйдет в Telegram мгновенно через бота. Если канал не выбран — будет ошибка.</div>
+      </div>
+      <div class="card"><div class="row" style="justify-content:space-between;margin-bottom:12px"><h3 style="margin:0">Контент</h3><input class="input" style="max-width:240px" placeholder="Поиск" value="${filters.content}" oninput="setFilter('content',this.value)"/></div>
+        <table class="table"><thead><tr><th>Пост</th><th>Канал</th><th>Статус</th><th>Модератор коммент</th><th>Действия</th></tr></thead><tbody>
+        ${data.content.filter(x=>!filters.content||`${x.title||''} ${x.body||''}`.toLowerCase().includes(filters.content.toLowerCase())).map(i=>`
+          <tr>
+            <td><b style="font-size:12px">${i.title||'Без названия'}</b><div class="muted" style="font-size:11px;max-width:280px">${(i.body||i.pollQuestion||'').slice(0,80)}</div>${i.mediaType==='POLL'?`<span class="badge">📊 ОПРОС: ${i.pollQuestion}</span>`:''}</td>
+            <td class="muted">${(data.channels.find(c=>c.id===i.channelId)?.title)||i.channel?.title||'—'}</td>
+            <td><span class="badge">${i.status}</span><div class="muted" style="font-size:10px">${i.publishedMessageId?`msg:${String(i.publishedMessageId).slice(0,6)}`:''}</div></td>
+            <td><input class="input" style="padding:5px 8px;font-size:11px" placeholder="Коммент модератора" value="${i.moderationComment||''}" onchange="updateContentComment('${i.id}',this.value)"/></td>
+            <td><div class="row">
+              <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" onclick="actContent('${i.id}','rewrite')">AI</button>
+              <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" onclick="actContent('${i.id}','approve')">Approve</button>
+              <button class="btn btn-primary" style="padding:4px 8px;font-size:11px" onclick="actContent('${i.id}','publish-now')">Опубликовать</button>
+              <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" onclick="delContent('${i.id}')">Удал</button>
+            </div></td>
+          </tr>`).join('')}
+        </tbody></table>
+      </div>
+    `:''}
+    ${tab==='channels'?`<div class="grid grid-2"><div class="card"><h3 style="margin:0 0 12px">Новый канал</h3><div class="grid"><input class="input" placeholder="Название: СВОЙ Луганск" value="${forms.channel.title}" oninput="setForm('channel','title',this.value)"/><input class="input" placeholder="Handle: @lnrsvoy" value="${forms.channel.handle}" oninput="setForm('channel','handle',this.value)"/><input class="input" placeholder="Telegram ID: -100..." value="${forms.channel.telegramId}" oninput="setForm('channel','telegramId',this.value)"/><input class="input" placeholder="Описание" value="${forms.channel.description}" oninput="setForm('channel','description',this.value)"/><input class="input" placeholder="Ватермарка" value="${forms.channel.postWatermark}" oninput="setForm('channel','postWatermark',this.value)"/><label class="row"><input type="checkbox" ${forms.channel.autoModeration?'checked':''} onchange="setForm('channel','autoModeration',this.checked)"/> Авто-модерация</label><label class="row"><input type="checkbox" ${forms.channel.autoPublishRss?'checked':''} onchange="setForm('channel','autoPublishRss',this.checked)"/> Авто-публикация RSS</label><button class="btn btn-accent" onclick="createChannel()">Создать / Обновить</button></div></div><div class="card"><h3 style="margin:0 0 12px">Твои каналы • Статистика из Telegram</h3>${data.channels.map(c=>`<div class="card" style="background:var(--bg);margin-bottom:10px"><div class="row" style="justify-content:space-between"><b>${c.title}</b><span class="badge">${c.handle||c.telegramId||''}</span></div><div class="muted" style="font-size:11px;margin-top:6px">${c.description||''}</div><div class="row" style="margin-top:10px"><button class="btn btn-ghost" style="padding:5px 10px;font-size:11px" onclick="channelStats('${c.id}')">📊 Статистика</button><button class="btn btn-ghost" style="padding:5px 10px;font-size:11px" onclick="editChannel('${c.id}')">Настройки</button></div><div id="stats-${c.id}" class="muted" style="font-size:11px;margin-top:8px"></div></div>`).join('')||'<div class="empty">Каналов нет — создай первый слева</div>'}</div></div>`:''}
+    ${tab==='bots'?`<div class="grid grid-2"><div class="card"><h3 style="margin:0 0 12px">Добавить бота</h3><div class="grid"><input class="input" placeholder="Username без @: SVOIROBOT" value="${forms.bot.username}" oninput="setForm('bot','username',this.value)"/><input class="input" placeholder="Token Ref: env:MASTER_BOT_TOKEN" value="${forms.bot.tokenRef}" oninput="setForm('bot','tokenRef',this.value)"/><input class="input" placeholder="Webhook: /telegram/webhook/master" value="${forms.bot.webhookPath}" oninput="setForm('bot','webhookPath',this.value)"/><input class="input" placeholder="InternalKey: master" value="${forms.bot.internalKey}" oninput="setForm('bot','internalKey',this.value)"/><button class="btn btn-accent" onclick="createBot()">Добавить</button></div></div><div class="card"><h3 style="margin:0 0 12px">Боты • Механики</h3>${data.bots.map(b=>`<div class="card" style="background:var(--bg);margin-bottom:10px"><div class="row" style="justify-content:space-between"><b>@${b.username}</b>${b.isMaster?'<span class="badge" style="color:var(--green)">MASTER</span>':''}</div><div class="muted" style="font-size:11px;margin-top:6px">${b.webhookPath} • Механики: прием заявок (реклама/новости/жалобы), модерация, авто-постинг, опросы, RSS</div></div>`).join('')||'<div class="empty">Только SVOIROBOT</div>'}</div></div>`:''}
+    ${tab==='moderation'?`<div class="grid grid-2"><div class="card"><h3 style="margin:0 0 12px">Модерация • Бан/Мут/Удалить</h3><div class="grid"><input class="input" placeholder="Chat ID канала -100..." value="${forms.moderation.chatId}" oninput="setForm('moderation','chatId',this.value)"/><input class="input" placeholder="Telegram ID юзера" value="${forms.moderation.targetTelegramId}" oninput="setForm('moderation','targetTelegramId',this.value)"/><input class="input" placeholder="Message ID для удаления" value="${forms.moderation.messageId}" oninput="setForm('moderation','messageId',this.value)"/><select class="select" value="${forms.moderation.action}" onchange="setForm('moderation','action',this.value)"><option>WARN</option><option>MUTE</option><option>BAN</option><option>DELETE</option></select><textarea class="textarea" placeholder="Причина (увидит модератор в логах)" oninput="setForm('moderation','reason',this.value)">${forms.moderation.reason}</textarea><button class="btn btn-accent" onclick="applyMod()">Применить к каналу</button></div></div><div class="card"><h3>Авто-правила (вишенка 🍒)</h3><div class="muted" style="font-size:12px;line-height:1.6">
+      Бот сам будет:<br>
+      • Удалять сообщения с матом (список в Channel.settingsJson.badWords)<br>
+      • Банить за спам-ссылки если >3 ссылок<br>
+      • Авто-мут на 1 час за флуд >5 сообщений за 10 сек (реализовано в TelegramService)<br>
+      • Логировать всё в Moderation tab
+    </div><table class="table" style="margin-top:12px"><thead><tr><th>Действие</th><th>Цель</th><th>Причина</th></tr></thead><tbody>${data.moderation.map(i=>`<tr><td><span class="badge">${i.action}</span></td><td>${i.targetTelegramId}</td><td class="muted">${i.reason||'—'}</td></tr>`).join('')}</tbody></table></div></div>`:''}
+    ${tab==='rss'?`<div class="grid grid-2"><div class="card"><h3 style="margin:0 0 12px">RSS → Канал (связка)</h3><div class="grid"><input class="input" placeholder="Название: Lenta.ru" value="${forms.rss.title}" oninput="setForm('rss','title',this.value)"/><input class="input" placeholder="URL: https://lenta.ru/rss" value="${forms.rss.url}" oninput="setForm('rss','url',this.value)"/><select class="select" value="${forms.rss.channelId}" onchange="setForm('rss','channelId',this.value)"><option value="">— В какой канал постить? —</option>${data.channels.map(c=>`<option value="${c.id}" ${forms.rss.channelId===c.id?'selected':''}>${c.title}</option>`).join('')}</select><label class="row"><input type="checkbox" ${forms.rss.autoPublish?'checked':''} onchange="setForm('rss','autoPublish',this.checked)"/> Авто-публиковать сразу (без проверки)</label><button class="btn btn-accent" onclick="createRss()">Добавить источник</button></div><div class="muted" style="font-size:11px;margin-top:8px">Если выбран канал + авто-публикация, новости будут сами падать в канал через AI-переписывание (Groq/Gemini бесплатно).</div></div><div class="card"><h3>Источники</h3><table class="table"><thead><tr><th>Название</th><th>URL</th><th>Канал</th><th></th></tr></thead><tbody>${data.rss.map(r=>`<tr><td><b>${r.title}</b></td><td class="muted" style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${r.url}</td><td>${(data.channels.find(c=>c.id===r.channelId)?.title)||'—'}</td><td><button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" onclick="fetchRss('${r.id}')">Fetch → Контент</button></td></tr>`).join('')||'<tr><td colspan="4"><div class="empty">Нет источников</div></td></tr>'}</tbody></table></div></div>`:''}
+    ${tab==='users'?`<div class="card"><h3>Команда</h3><table class="table"><thead><tr><th>@</th><th>ID</th><th>Роль</th></tr></thead><tbody>${data.users.map(u=>`<tr><td>@${u.username||'—'}</td><td class="muted">${u.telegramUserId}</td><td><span class="badge">${u.role}</span></td></tr>`).join('')}</tbody></table></div>`:''}
+    ${tab==='audit'?`<div class="card"><h3>Логи</h3><table class="table"><thead><tr><th>Action</th><th>Entity</th><th>Время</th></tr></thead><tbody>${data.audit.map(a=>`<tr><td><span class="badge">${a.action}</span></td><td>${a.entityType}</td><td class="muted">${new Date(a.createdAt).toLocaleString('ru-RU')}</td></tr>`).join('')}</tbody></table></div>`:''}
+  `;
+}
+function switchTab(t){tab=t;renderApp();}
+function setFilter(k,v){filters[k]=v;renderApp();}
+function setForm(g,k,v){forms[g][k]=v;if(g==='content'&&k==='mediaType'){setTimeout(renderApp,0);}renderApp();}
+function setIntakeComment(id,v){forms.intakeComment[id]=v;}
+function setPollOption(idx,v){forms.content.pollOptions[idx]=v;}
+function addPollOption(){forms.content.pollOptions.push('');renderApp();}
+async function loadAll(){
+  try{me=await api('/auth/me');}catch{me={authenticated:false};}
+  renderAuth();
+  if(!me.authenticated){document.getElementById('app').innerHTML='';return;}
+  const safe=(p,f)=>safeApi(p,f);
+  const d=await safe('/admin/dashboard',{users:0,channels:0,bots:0,requests:0,content:0,moderation:0,rss:0});
+  const users=await safe('/users?limit=50',[]);
+  const intakes=await safe('/admin/intakes?limit=50',[]);
+  const channels=await safe('/channels',[]);
+  const bots=await safe('/bots',[]);
+  const content=await safe('/content?limit=50',[]);
+  const moderation=await safe('/moderation',[]);
+  const rss=await safe('/rss',[]);
+  const audit=await safe('/audit?limit=50',[]);
+  const unwrap=x=>Array.isArray(x)?x:(x.items||[]);
+  data={dashboard:d,users:unwrap(users),intakes:unwrap(intakes),channels:Array.isArray(channels)?channels:channels.items||channels,bots:Array.isArray(bots)?bots:bots.items||bots,content:unwrap(content),moderation:Array.isArray(moderation)?moderation:moderation.items||moderation,rss:Array.isArray(rss)?rss:rss.items||rss,audit:unwrap(audit)};
+  renderApp();
+}
+async function submit(p,b,m='POST'){try{await api(p,{method:m,body:JSON.stringify(b)});}catch(e){alert(e.message);}await loadAll();}
+async function patchUser(id,role){await submit('/users/'+id,{role},'PATCH');}
+async function updateIntake(id,status){const comment=forms.intakeComment[id]||'';await submit('/admin/intakes/'+id+'/status',{status,moderatorComment:comment},'PATCH');}
+async function intakeToContent(id){try{const intake=data.intakes.find(x=>x.id===id);if(!intake)return;await api('/content',{method:'POST',body:JSON.stringify({title:intake.title||'Из заявки',body:intake.text,mediaType:intake.mediaType||'TEXT',mediaFileId:intake.mediaFileId})});alert('Создан контент из заявки');await loadAll();}catch(e){alert(e.message);}}
+async function createChannel(){await submit('/channels',forms.channel);forms.channel={title:'',handle:'',telegramId:'',postWatermark:'СВОЙ',description:'',autoModeration:true,autoPublishRss:false};}
+async function channelStats(id){const el=document.getElementById('stats-'+id);if(!el)return;el.textContent='Загрузка...';try{const s=await api('/channels/'+id+'/stats');el.textContent=`Подписчиков: ${s.subscribers??'—'} • Постов: ${s.contentCount??0} • Chat: ${s.chat?.title||''}`;}catch(e){el.textContent='Ошибка: '+e.message;}}
+function editChannel(id){const c=data.channels.find(x=>x.id===id);if(!c)return;forms.channel={title:c.title,handle:c.handle||'',telegramId:c.telegramId||'',postWatermark:c.postWatermark||'',description:c.description||'',autoModeration:c.autoModeration??true,autoPublishRss:c.autoPublishRss??false};switchTab('channels');renderApp();window.scrollTo({top:0,behavior:'smooth'});}
+async function createBot(){await submit('/bots',forms.bot);}
+async function createRss(){await submit('/rss',{title:forms.rss.title,url:forms.rss.url,channelId:forms.rss.channelId||undefined,autoPublish:forms.rss.autoPublish});}
+async function fetchRss(id){await submit('/rss/'+id+'/fetch',{});}
+async function createContent(){const b={...forms.content,pollOptions:forms.content.mediaType==='POLL'?forms.content.pollOptions.filter(x=>x.trim()):undefined};await submit('/content',b);forms.content={title:'',body:'',channelId:forms.content.channelId,mediaType:'TEXT',pollQuestion:'',pollOptions:['',''],watermarkText:'СВОЙ'};}
+async function createContentAndPublish(){const b={...forms.content,pollOptions:forms.content.mediaType==='POLL'?forms.content.pollOptions.filter(x=>x.trim()):undefined};try{const created=await api('/content',{method:'POST',body:JSON.stringify(b)});const id=created.id||created.data?.id;if(id){await api('/content/'+id+'/publish-now',{method:'POST'});alert('Опубликовано!');}await loadAll();}catch(e){alert(e.message);}}
+async function actContent(id,a){await submit('/content/'+id+'/'+a,{});}
+async function updateContentComment(id,val){await api('/content/'+id,{method:'PATCH',body:JSON.stringify({moderationComment:val})}).catch(()=>{});}
+async function delContent(id){if(confirm('Удалить?')){await api('/content/'+id,{method:'DELETE'});await loadAll();}}
+async function applyMod(){await submit('/moderation/apply',{...forms.moderation,messageId:forms.moderation.messageId?Number(forms.moderation.messageId):undefined});}
+async function escalateMod(){await submit('/moderation/escalate',{chatId:forms.moderation.chatId,targetTelegramId:forms.moderation.targetTelegramId,reason:forms.moderation.reason});}
+loadAll();
+</script>
+</body>
+</html>

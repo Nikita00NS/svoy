@@ -1,0 +1,21 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap');
+:root{--bg:#0a0a0f;--card:#15151d;--card2:#1c1c26;--border:#262631;--text:#f5f5f7;--muted:#9a9aab;--accent:#7c3aed;--accent2:#a78bfa;--green:#22c55e}
+*{box-sizing:border-box}body{margin:0;font-family:'Manrope',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+a{color:var(--accent2);text-decoration:none}
+.container{max-width:1320px;margin:0 auto;padding:32px 24px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:border-color .2s}
+.card:hover{border-color:#2f2f40}
+.btn{background:var(--text);color:#000;border:0;padding:12px 20px;border-radius:12px;cursor:pointer;font-weight:600;transition:all .2s}
+.btn:hover{transform:translateY(-1px)}
+.btn.secondary{background:var(--card2);color:var(--text);border:1px solid var(--border)}
+.btn.accent{background:linear-gradient(135deg,var(--accent),#ec4899);color:#fff}
+.input,.select,.textarea{width:100%;padding:14px 16px;border-radius:12px;border:1px solid var(--border);background:var(--bg);color:var(--text)}
+.table{width:100%;border-collapse:separate;border-spacing:0;font-size:14px}
+.table th{text-align:left;padding:12px 16px;color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border)}
+.table td{padding:14px 16px;border-bottom:1px solid var(--border)}
+.muted{color:var(--muted)}.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0;background:var(--card);padding:6px;border-radius:14px;border:1px solid var(--border);width:fit-content}
+.tab{padding:8px 16px;border-radius:10px;background:transparent;border:0;color:var(--muted);cursor:pointer;font-weight:600;font-size:13px}
+.tab.active{background:var(--text);color:#000}
+.grid{display:grid;gap:16px}.grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}.grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:900px){.grid-2,.grid-4{grid-template-columns:1fr}}
